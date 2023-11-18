@@ -4,7 +4,7 @@ import moderngl_window as mglw
 from camera import Camera
 
 class App(mglw.WindowConfig):
-    WIDTH, HEIGHT = 1920, 1080
+    WIDTH, HEIGHT = 1280, 720
     window_size = WIDTH, HEIGHT
     resource_dir = 'programs'
     cam = Camera();

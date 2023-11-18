@@ -1,0 +1,17 @@
+Reference material used:
+https://iquilezles.org/articles/
+https://michaelwalczyk.com/blog-ray-marching.html
+https://youtu.be/TSAIR03FPfY
+https://www.youtube.com/watch?v=s5NGeUV2EyU&t=1s
+https://en.wikipedia.org/wiki/Taxicab_geometry
+https://medium.com/@calebleak/raymarching-voxel-rendering-58018201d9d6
+https://www.youtube.com/watch?v=Ff0jJyyiVyw&list=PLGmrMu-IwbgtMxMiV3x4IrHPlPmg7FD-P
+https://www.youtube.com/watch?v=hUaYxqkrfjA
+https://www.youtube.com/watch?v=7UvpTTEE1Hs
+https://youtu.be/ag2Xd38sS2A?si=jJd7psJP7Jp5fB4O
+https://www.youtube.com/watch?v=i12pFwXlOGw
+https://www.shadertoy.com/view/WsXBD4
+https://www.youtube.com/watch?v=NCpaaLkmXI8&list=PLGmrMu-IwbgtMxMiV3x4IrHPlPmg7FD-P&index=13
+https://www.shadertoy.com/view/ltj3zW
+https://www.shadertoy.com/view/fdlyD2
+https://www.shadertoy.com/view/4sfGDB
