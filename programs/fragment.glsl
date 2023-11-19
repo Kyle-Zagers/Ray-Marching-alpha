@@ -6,187 +6,234 @@ layout (location = 0) out vec4 fragColor;
 precision mediump float;
 
 uniform vec2 u_resolution;
-//uniform vec2 u_mouse;
+uniform vec2 u_mouse;
 uniform float u_time;
 uniform float u_scroll;
-uniform int u_key;
-uniform vec3 u_camPos;
+//uniform int u_key;
+//uniform vec3 u_camPos;
 
 const float MAX_STEPS = 100.0;
 const float MIN_DIST_TO_SDF = 0.001;
 const float MAX_DIST_TO_TRAVEL = 100.0;
-const float EPSILON = 0.01;
+const float EPSILON = 0.001;
 
-struct Light {
-  float size;
-  vec3 pos;
-  vec3 color;
-};
 
-float map(vec3 pos) {
 
-  // box 1
-  float boxDist = fBox(pos-vec3(3*cos(u_time), 0.0, 3*sin(u_time)), vec3(1));
-  //float boxDist2 = sdfBox(vec3(-10,-10,-10),vec3(1.0));
 
-  float kyleBox = fBox(pos-vec3(3*cos(u_time), 1.5, 3*sin(u_time)), vec3(0.5));
 
-  // plane
-  vec3 normal = vec3(0.0, 1.0, 0.0);
-  float planeDist = fPlane(pos, normal, 1.0);
 
-  // sphere
-  float sphereDist = fSphere(pos-vec3(9, 2 , -1), 1);
-  float box = fBox(pos-vec3(7, 0.5, -1), vec3(0.5));
 
-  float blob = fBlob(pos-vec3(0, 1, 0));
 
-  float maxDist = min(planeDist, blob);
-  //maxDist = min(maxDist, boxDist);
-  //maxDist = min(maxDist, kyleBox);
-  maxDist = min(maxDist, box);
-    
-  return maxDist;
+
+vec2 calcSDF(vec3 pos) {
+    float matID = 0.0; //temporary default
+
+    float planeDist = fPlane(pos, vec3(0.0, 1.0, 0.0), 1.0);
+    float boxDist = fBox(pos-vec3(0, 0.5, 0), vec3(0.5));
+
+    float dist = min(planeDist, boxDist);
+
+    return vec2(dist, matID);
 }
 
-float rayMarch(vec3 rOrigin, vec3 rDirection, float maxDistToTravel) {
-  float rDist = 0.0;
 
-  for (float i = 0.0; i < MAX_STEPS; i++) {
-    vec3 currentPos = rOrigin + rDirection * rDist;
-    float maxDist = map(currentPos);
+float calcAO(vec3 pos, vec3 normal) {
+    float occ = 0.0;
+    float sca = 1.0;
 
-    rDist += maxDist;
-
-    if (rDist > maxDistToTravel || maxDist < MIN_DIST_TO_SDF) {
-      break;
+    for(int i=0; i<5; i++) {
+        float hrconst = 0.03; // larger values = AO
+        float hr = hrconst + 0.15*float(i)/4.0;
+        vec3 aopos =  normal * hr + pos;
+        float dd = calcSDF( aopos ).x;
+        occ += (hr-dd)*sca;
+        sca *= 0.95;
     }
-  }
-
-  return rDist;
+    return clamp(1.0 - occ*1.5, 0.0, 1.0);
 }
 
-vec3 getNormal(vec3 p) {
+
+// cut1 and cut2 define the center cone and the max width of the light
+// they are cosines of the corresponding angles, so a center cone of
+// 15 degrees and a max width of 30 degrees would correspond to
+// cut1 = 0.9659258 and cut2 = 0.8660254
+// lr is the normalized light ray
+float calcDirLight(vec3 p, vec3 lookfrom, vec3 lookat,
+                           in float cut1, in float cut2) {
+    vec3 lr = normalize(lookfrom - p);
+    float intensity = dot(lr, normalize(lookfrom - lookat));
+    return smoothstep(cut2, cut1, intensity);
+}
+
+
+// https://iquilezles.org/articles/rmshadows
+float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax)
+{
+	float t = mint;
+    float k = 20.;  // "softness" of shadow. smaller numbers = softer
+
+    // unroll first loop iteration
+    float h = calcSDF(ro + rd*t).x;
+    float res = min(1., k*h/t);
+    t += h;
+    float ph = h; // previous h
+    
+    for( int i=1; i<60; i++ )
+    {
+        if( res<0.01 || t>tmax ) break;        
+
+        h = calcSDF(ro + rd*t).x;
+        float y = h*h/(2.0*ph);
+        float d = sqrt(h*h-y*y);
+        res = min(res, k*d/max(0.0, t-y));
+        ph = h;
+        t += h;
+    }
+    res = clamp( res, 0.0, 1.0 );
+    return res*res*(3.0-2.0*res);  // smoothstep, smoothly transition from 0 to 1
+}
+
+
+vec3 calcLight(vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
+    float kDiffuse = 0.4,
+        kAmbient = 0.2;
+
+    vec3 col_light = vec3(1.0),
+        iSpecular = 6.*col_light,  // intensity
+        iDiffuse = 2.*col_light,
+        iAmbient = 1.*col_light;
+    
+    vec3 lPos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
+    vec3 lDir = vec3(0.5, 0.0, 0.0);
+
+    float alpha_phong = 20.0; // phong alpha component
+
+
+    vec3 lRay = normalize(lPos - pos);
+    
+    float light = calcDirLight(pos, lPos, lDir, 0.96, 0.86);
+    vec3 lDirRef = reflect(lRay, normal);
+
+    float shadow = 1.0;
+    if (light > 0.001) { // no need to calculate shadow if we're in the dark
+        shadow = calcSoftshadow(pos, lRay, 0.01, 20.0);
+    }
+    vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
+    vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
+    vec3 amb = light*kAmbient*iAmbient*ambientOcc;
+
+    return material*(amb + dif + spec);
+    
+}
+
+
+vec4 getNormal(vec3 pos) { 
+    vec2 dist = calcSDF(pos);
     vec2 e = vec2(EPSILON, 0.0);
-    vec3 n = vec3(map(p)) - vec3(map(p - e.xyy), map(p - e.yxy), map(p - e.yyx));
+
+    vec3 normal = dist.x - vec3(
+        calcSDF(pos-e.xyy).x,
+        calcSDF(pos-e.yxy).x,
+        calcSDF(pos-e.yyx).x);
+
+    return vec4(normalize(normal), dist.y);
+}
+
+vec3 getNormal2(vec3 p) {
+    vec2 e = vec2(EPSILON, 0.0);
+    vec3 n = vec3(calcSDF(p).x) - vec3(calcSDF(p - e.xyy).x, calcSDF(p - e.yxy).x, calcSDF(p - e.yyx).x);
     return normalize(n);
 }
 
-float softShadow2(vec3 rOrigin, vec3 rDirection, float lightSize) {
-  float t = 0.01;
-  float res = 1.0;
-  float maxt = 3.0;
-  for(int i = 0; i<256 && t<maxt; i++)
-  {
-    float h = map(rOrigin + t*rDirection);
-    res = min(res, h/(lightSize*t));
-    t += clamp(h, 0.005, 0.50);
-    if(res < -1.0 || t>maxt) break;
-  }
-  res = max(res, -1.0);
-  return 0.25*(1.0+res)*(1.0+res)*(2.0-res);
+vec3 getNormal3(vec3 pos) { 
+    vec2 dist = calcSDF(pos);
+    vec2 e = vec2(EPSILON, 0.0);
+
+    vec3 normal = dist.x - vec3(
+        calcSDF(pos-e.xyy).x,
+        calcSDF(pos-e.yxy).x,
+        calcSDF(pos-e.yyx).x);
+
+    return normalize(normal);
 }
 
 
+float rMarch(vec3 rOrig, vec3 rDir) {
+    float dOrig = 0.0; // distance from ray origin
 
+    for(int i=0; i<MAX_STEPS; i++) {
+        vec3 rPos = rOrig + rDir * dOrig;
+        float dSurf = calcSDF(rPos).x;
+        dOrig += dSurf;
+        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF) break;
+    }
 
-float softShadow(vec3 pos, Light lightSource) {
-  float shadow = 1.0;
-  float dist = 0.01;
-  vec3 lightPos = normalize(lightSource.pos);
-  for (int i=0; i < MAX_STEPS; i++) {
-    float hit = map(pos + lightPos * dist);
-    shadow = min(shadow, hit / (dist * lightSource.size));
-    dist += hit;
-    if (hit < MIN_DIST_TO_SDF || dist > MAX_DIST_TO_TRAVEL) break;
-  }
-  return clamp(shadow, 0.0, 1.0);
-}
-
-float ambientOcclusion(vec3 pos, vec3 normal) {
-  float occ = 0.0;
-  float weight = 1.0;
-  for (int i = 0; i < 8; i++) {
-    float len = 0.01 + 0.02 * float(i * i);
-    float dist = map(pos + normal * len);
-    occ += (len - dist) * weight;
-    weight *= 0.85;
-  }
-  return 1.0 - clamp(0.6 * occ, 0.0, 1.0);
-}
-
-vec3 lighting(Light lightSource, vec3 rOrigin, vec3 rDirection){
-  vec3 L = normalize(lightSource.pos - rOrigin);
-  vec3 N = getNormal(rOrigin);
-  vec3 V = -rDirection;
-  vec3 R = reflect(-L, N);
-
-  vec3 color = lightSource.color;
-
-
-  // phong lighting
-  vec3 specColor = (lightSource.color);
-  vec3 specular = 1.3 * specColor * pow(clamp(dot(R, V), 0.0, 1.0), 10.0);
-  vec3 diffuse = 0.9 * color * clamp(dot(L, N), 0.0, 1.0);
-  vec3 ambient = 0.05 * color;
-  vec3 fresnel = 0.15 * color * pow(1.0 + dot(rDirection, N), 3.0);
-
-  // shadows
-  //float shadow = softShadow(rOrigin + N * 0.02, lightSource);
-  float shadow = softShadow2(rOrigin, L, lightSource.size);
-
-  // occ
-  float occ = ambientOcclusion(rOrigin, N);
-  
-  // back
-  vec3 back = 0.05 * color * clamp(dot(N, -L), 0.0, 1.0);
-
-  // final light value
-  return  (back + ambient + fresnel) * occ + (specular * occ + diffuse) * shadow;
+    return dOrig;
 }
 
 
-vec3 render(vec2 uv) {
-  vec3 color = vec3(0.34, 0.6, 0.94);
+vec3 render(vec3 rOrig, vec3 rDir) {
+    vec3 col = vec3(0);
 
-  vec3 rOrigin = u_camPos;
-  rOrigin = rOrigin / ((u_scroll+1)*0.1);
+    float dist = rMarch(rOrig, rDir);
 
-  vec3 rDirection = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // *BUG* prev: vec3(uv, 1.0);
+    if (dist<MAX_DIST_TO_TRAVEL) {
+        vec3 pos = rOrig + rDir * dist; // surface point location
+        vec4 normalVal = getNormal(pos);
+        vec3 normal = normalVal.xyz; //surface normal
+        vec3 rDirRef = reflect(rDir, normal); // reflected ray
+        //float matID = normalVal.w;
 
-  // light 1
-  Light light1;
-  light1.size = 0.05;
-  light1.pos = vec3 (5, 5, 0);
-  light1.color = vec3(1);
+        float ambientOcc = calcAO(pos, normal);
 
-  // light 2
-  Light light2;
-  light2.size = 0.1;
-  light2.pos = vec3 (sin(u_time)*2, 2.0, cos(u_time)*2);
-  light2.color = vec3(0.9, 0.0, 0.0);
-
-  float rDist = rayMarch(rOrigin, rDirection, MAX_DIST_TO_TRAVEL);
-    
-  if (rDist < MAX_DIST_TO_TRAVEL)
-  {
-    color = vec3(0.0);
-
-    vec3 hitPos = rOrigin + (rDist * rDirection);
-    //color += lighting(light1, hitPos, rDirection);
-    color += lighting(light2, hitPos, rDirection);
-  }
-
-    
-  return color;
+        col += calcLight(pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        //col = normal;
+    }
+    return clamp(col, 0.0, 1.0);
 }
+
+
+// Camera system explained here:
+// https://www.youtube.com/watch?v=PBxuVlp7nuM
+vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
+    vec3 forward = normalize(lookat-rOrig),
+        right = normalize(cross(forward, vec3(0, 1., 0))),
+        up = cross(right, forward),
+        center = forward*zoom,
+        intersection = center + uv.x*right + uv.y*up,
+        dir = normalize(intersection);
+    return dir;
+}
+
+
+mat2 rotMatrix(float a) {
+    float s = sin(a), c = cos(a);
+    return mat2(c, -s, s, c);
+}
+
 
 void main() {
-  vec2 uv = 2.0 * gl_FragCoord.xy / u_resolution - 1.0;
-  // note: properly center the shader in full screen mode
-  uv = (2.0 * gl_FragCoord.xy - u_resolution) / u_resolution.y;
-  vec3 color = vec3(0.0);
-  color = render(uv);
-  //color = vec3(uv, 0.0);
-  fragColor = vec4(color, 1.0);
+    vec2 uv = (gl_FragCoord.xy-.5*u_resolution.xy)/u_resolution.y;
+	vec2 mouse = u_mouse.xy/u_resolution.xy;
+
+    if (mouse.x != 0. || mouse.y != 0.) {
+        mouse -= vec2(.5, .5);
+    }
+    mouse.y = clamp(mouse.y, -.3, .15);
+
+
+    vec3 rOrig = vec3(0, 6, 8);
+    rOrig.yz *= rotMatrix(mouse.y*3.14);
+    rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
+
+    rOrig = vec3(0, 1, 8);
+    
+    vec3 rDir = rDir(uv, rOrig, vec3(0., 1.0, 0.), 2.3);
+    
+    vec3 col = render(rOrig, rDir);
+    //col = vec3(uv,0.0);
+    
+    // col = pow(col, vec3(.4545));	// gamma correction
+    
+    fragColor = vec4(col,1.0); 
 }

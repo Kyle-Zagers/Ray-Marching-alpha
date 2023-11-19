@@ -3,3 +3,4 @@ moderngl_window
 
 glcontext~=2.5.0
 pyglet~=2.0.10
+pyrr~=0.10.3

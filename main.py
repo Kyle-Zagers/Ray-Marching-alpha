@@ -29,9 +29,9 @@ class App(mglw.WindowConfig):
         self.texture6 = self.load_texture_2d('../textures/green_marble1.png')  # sphere
         self.texture7 = self.load_texture_2d('../textures/roof/height3.png')  # roof bump
         # uniforms
-        self.program['u_scroll'] = self.u_scroll
+        #self.program['u_scroll'] = self.u_scroll
         self.program['u_resolution'] = self.window_size
-        self.program['u_camPos'] = self.cam_pos
+        # self.program['u_camPos'] = self.cam_pos
         # self.program['u_texture1'] = 1
         # self.program['u_texture2'] = 2
         # self.program['u_texture3'] = 3
@@ -45,7 +45,7 @@ class App(mglw.WindowConfig):
 
     def render(self, time, frame_time):
         self.ctx.clear()
-        self.program['u_time'] = time
+        # self.program['u_time'] = time
         self.key_press()
         # self.texture1.use(location=1)
         # self.texture2.use(location=2)
@@ -60,13 +60,13 @@ class App(mglw.WindowConfig):
         #self.program['u_mouse'] = (x, y)
         pass
     
-    def mouse_scroll_event(self, x_offset, y_offset):
-        self.u_scroll = max(1.0, self.u_scroll + y_offset)
-        self.program['u_scroll'] = self.u_scroll
+    # def mouse_scroll_event(self, x_offset, y_offset):
+    #     self.u_scroll = max(1.0, self.u_scroll + y_offset)
+    #     self.program['u_scroll'] = self.u_scroll
     
 
     def key_event(self, key, action, modifiers):
-        if key == self.wnd.keys.W:
+        if key == self.wnd.keys.W.A:
             self.keys["W"] = action == self.wnd.keys.ACTION_PRESS
         if key == self.wnd.keys.A:
             self.keys["A"] = action == self.wnd.keys.ACTION_PRESS
@@ -79,7 +79,7 @@ class App(mglw.WindowConfig):
         #if modifiers == self.wnd.modifiers.ctrl:
         self.keys["shift"] = self.wnd.modifiers.shift;
 
-        self.program['u_camPos'] = self.cam_pos
+        # self.program['u_camPos'] = self.cam_pos
         
 
     def key_press(self):
@@ -96,7 +96,7 @@ class App(mglw.WindowConfig):
             self.cam_pos += Vector3([0.0, speed, 0.0])
         if self.keys.get("shift"):
             self.cam_pos += Vector3([0.0, -speed, 0.0])
-        self.program['u_camPos'] = self.cam_pos
+        # self.program['u_camPos'] = self.cam_pos
 
     # def assign_event_callbacks(self):
     #     return super().assign_event_callbacks()
