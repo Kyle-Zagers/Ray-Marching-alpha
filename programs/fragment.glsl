@@ -222,11 +222,9 @@ void main() {
     mouse.y = clamp(mouse.y, -.3, .15);
 
 
-    vec3 rOrig = vec3(0, 6, 8);
+    vec3 rOrig = vec3(-4, 3, 20);
     rOrig.yz *= rotMatrix(mouse.y*3.14);
     rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
-
-    rOrig = vec3(0, 1, 8);
     
     vec3 rDir = rDir(uv, rOrig, vec3(0., 1.0, 0.), 2.3);
     
