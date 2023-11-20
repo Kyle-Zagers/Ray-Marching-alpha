@@ -45,7 +45,7 @@ class App(mglw.WindowConfig):
 
     def render(self, time, frame_time):
         self.ctx.clear()
-        # self.program['u_time'] = time
+        self.program['u_time'] = time
         self.key_press()
         # self.texture1.use(location=1)
         # self.texture2.use(location=2)
@@ -57,7 +57,7 @@ class App(mglw.WindowConfig):
         self.quad.render(self.program)
 
     def mouse_position_event(self, x, y, dx, dy):
-        #self.program['u_mouse'] = (x, y)
+        self.program['u_mouse'] = (x, y)
         pass
     
     # def mouse_scroll_event(self, x_offset, y_offset):
@@ -66,7 +66,7 @@ class App(mglw.WindowConfig):
     
 
     def key_event(self, key, action, modifiers):
-        if key == self.wnd.keys.W.A:
+        if key == self.wnd.keys.W:
             self.keys["W"] = action == self.wnd.keys.ACTION_PRESS
         if key == self.wnd.keys.A:
             self.keys["A"] = action == self.wnd.keys.ACTION_PRESS
@@ -79,7 +79,7 @@ class App(mglw.WindowConfig):
         #if modifiers == self.wnd.modifiers.ctrl:
         self.keys["shift"] = self.wnd.modifiers.shift;
 
-        # self.program['u_camPos'] = self.cam_pos
+        self.program['u_camPos'] = self.cam_pos
         
 
     def key_press(self):
@@ -96,7 +96,7 @@ class App(mglw.WindowConfig):
             self.cam_pos += Vector3([0.0, speed, 0.0])
         if self.keys.get("shift"):
             self.cam_pos += Vector3([0.0, -speed, 0.0])
-        # self.program['u_camPos'] = self.cam_pos
+        self.program['u_camPos'] = self.cam_pos
 
     # def assign_event_callbacks(self):
     #     return super().assign_event_callbacks()

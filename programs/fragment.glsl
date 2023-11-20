@@ -10,7 +10,7 @@ uniform vec2 u_mouse;
 uniform float u_time;
 uniform float u_scroll;
 //uniform int u_key;
-//uniform vec3 u_camPos;
+uniform vec3 u_camPos;
 
 const float MAX_STEPS = 100.0;
 const float MIN_DIST_TO_SDF = 0.001;
@@ -28,10 +28,18 @@ const float EPSILON = 0.001;
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
 
-    float planeDist = fPlane(pos, vec3(0.0, 1.0, 0.0), 1.0);
-    float boxDist = fBox(pos-vec3(0, 0.5, 0), vec3(0.5));
 
-    float dist = min(planeDist, boxDist);
+    float plane = fPlane(pos, vec3(0.0, 1.0, 0.0), 1.0);
+    float box = fBox(pos-vec3(-4, -0.5, -3), vec3(0.5));
+    float box2 = fBox(pos-vec3(1.5, -0.5, -3), vec3(0.5));
+    float longBox = fBox(pos-vec3(0, -1, -2), vec3(30, 0.5, 0.5));
+    float blob = fBlob(pos-vec3(0, 1, 0));
+
+
+    float dist = min(plane, box);
+    dist = min(longBox, dist);
+    dist = min(blob, dist);
+    dist = min(box2, dist);
 
     return vec2(dist, matID);
 }
@@ -96,7 +104,7 @@ float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax)
 
 vec3 calcLight(vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
     float kDiffuse = 0.4,
-        kAmbient = 0.2;
+        kAmbient = 0.05;
 
     vec3 col_light = vec3(1.0),
         iSpecular = 6.*col_light,  // intensity
@@ -173,7 +181,7 @@ float rMarch(vec3 rOrig, vec3 rDir) {
 
 
 vec3 render(vec3 rOrig, vec3 rDir) {
-    vec3 col = vec3(0);
+    vec3 col = vec3(0.05);
 
     float dist = rMarch(rOrig, rDir);
 
@@ -222,7 +230,7 @@ void main() {
     mouse.y = clamp(mouse.y, -.3, .15);
 
 
-    vec3 rOrig = vec3(-4, 3, 20);
+    vec3 rOrig = u_camPos;
     rOrig.yz *= rotMatrix(mouse.y*3.14);
     rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
     
