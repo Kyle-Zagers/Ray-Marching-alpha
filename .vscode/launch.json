@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/kylez/Downloads/OpenGLGame/Game",
-      "program": "c:/Users/kylez/Downloads/OpenGLGame/Game/build/Debug/outDebug",
+      "cwd": "c:/Users/kylez/Downloads",
+      "program": "c:/Users/kylez/Downloads/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
