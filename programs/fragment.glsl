@@ -17,13 +17,12 @@ const float MIN_DIST_TO_SDF = 0.001;
 const float MAX_DIST_TO_TRAVEL = 100.0;
 const float EPSILON = 0.001;
 
-
-
-
-
-
-
-
+struct Light {
+  float size;
+  vec3 pos;
+  vec3 col;
+  vec3 dir;
+};
 
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
@@ -66,8 +65,7 @@ float calcAO(vec3 pos, vec3 normal) {
 // 15 degrees and a max width of 30 degrees would correspond to
 // cut1 = 0.9659258 and cut2 = 0.8660254
 // lr is the normalized light ray
-float calcDirLight(vec3 p, vec3 lookfrom, vec3 lookat,
-                           in float cut1, in float cut2) {
+float calcDirLight(vec3 p, vec3 lookfrom, vec3 lookat, in float cut1, in float cut2) {
     vec3 lr = normalize(lookfrom - p);
     float intensity = dot(lr, normalize(lookfrom - lookat));
     return smoothstep(cut2, cut1, intensity);
@@ -117,29 +115,26 @@ float calcSoftshadowV2(in vec3 ro, in vec3 rd, float mint, float maxt, float w)
 }
 
 
-vec3 calcLight(vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
+vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
     float kDiffuse = 0.4,
         kAmbient = 0.05;
 
     vec3 col_light = vec3(1.0),
-        iSpecular = 6.*col_light,  // intensity
-        iDiffuse = 2.*col_light,
-        iAmbient = 1.*col_light;
-    
-    vec3 lPos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
-    vec3 lDir = vec3(0.5, 0.0, 0.0);
+        iSpecular = 6.*lightSource.col,  // intensity
+        iDiffuse = 2.*lightSource.col,
+        iAmbient = 1.*lightSource.col;
 
     float alpha_phong = 20.0; // phong alpha component
 
 
-    vec3 lRay = normalize(lPos - pos);
+    vec3 lRay = normalize(lightSource.pos - pos);
     
-    float light = calcDirLight(pos, lPos, lDir, 0.96, 0.86);
+    float light = calcDirLight(pos, lightSource.pos, lightSource.dir, 0.96, 0.86);
     vec3 lDirRef = reflect(lRay, normal);
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadowV2(pos, lRay, 0.01, 20.0,0.01);
+        shadow = calcSoftshadowV2(pos, lRay, 0.01, 20.0, lightSource.size);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
@@ -200,6 +195,15 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
     float dist = rMarch(rOrig, rDir);
 
+    // light 1
+    Light light1;
+    light1.size = 0.01;
+    light1.pos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
+    light1.col = vec3(1);
+    light1.dir = vec3(0.5, 0.0, 0.0);
+
+
+
     if (dist<MAX_DIST_TO_TRAVEL) {
         vec3 pos = rOrig + rDir * dist; // surface point location
         vec4 normalVal = getNormal(pos);
@@ -209,7 +213,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         float ambientOcc = calcAO(pos, normal);
 
-        col += calcLight(pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
         //col = normal;
     }
     return clamp(col, 0.0, 1.0);
