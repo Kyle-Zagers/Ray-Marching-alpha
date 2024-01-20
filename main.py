@@ -1,13 +1,10 @@
 from pyrr import Vector3, vector, vector3, matrix44
 import moderngl_window as mglw
 
-from camera import Camera
-
 class App(mglw.WindowConfig):
     WIDTH, HEIGHT = 1280, 720
     window_size = WIDTH, HEIGHT
     resource_dir = 'programs'
-    cam = Camera();
     lastX, lastY = WIDTH/2, HEIGHT/2
     first_mouse = True
     cam_pos = Vector3([0.0, 2.0, -4.0])
@@ -17,8 +14,14 @@ class App(mglw.WindowConfig):
         super().__init__(**kwargs)
         self.quad = mglw.geometry.quad_fs()
         self.program = self.load_program(vertex_shader='vertex.glsl', fragment_shader='fragment.glsl')
-        self.u_scroll = 3.0
+        self.u_scroll = 1.0
+        
         # keys
+
+        # mouse // New code for cursor hiding. Still experimenting.
+        self.wnd.cursor = False
+        #self.wnd.mouse_exclusivity = True
+        #self.wnd._mouse_pos = 0,0
 
         # textures
         self.texture1 = self.load_texture_2d('../textures/test0.png')
@@ -28,6 +31,7 @@ class App(mglw.WindowConfig):
         self.texture5 = self.load_texture_2d('../textures/black_marble1.png')  # pedestal
         self.texture6 = self.load_texture_2d('../textures/green_marble1.png')  # sphere
         self.texture7 = self.load_texture_2d('../textures/roof/height3.png')  # roof bump
+
         # uniforms
         #self.program['u_scroll'] = self.u_scroll
         self.program['u_resolution'] = self.window_size
@@ -39,8 +43,6 @@ class App(mglw.WindowConfig):
         # self.program['u_texture5'] = 5
         # self.program['u_texture6'] = 6
         # self.program['u_texture7'] = 7
-
-    
         
 
     def render(self, time, frame_time):
@@ -57,12 +59,14 @@ class App(mglw.WindowConfig):
         self.quad.render(self.program)
 
     def mouse_position_event(self, x, y, dx, dy):
+        print(f"{x}, {y}")
         self.program['u_mouse'] = (x, y)
         pass
     
-    # def mouse_scroll_event(self, x_offset, y_offset):
-    #     self.u_scroll = max(1.0, self.u_scroll + y_offset)
-    #     self.program['u_scroll'] = self.u_scroll
+    def mouse_scroll_event(self, x_offset, y_offset):
+        self.u_scroll = max(1.0, self.u_scroll + y_offset)
+        print(self.u_scroll)
+        self.program['u_scroll'] = self.u_scroll
     
 
     def key_event(self, key, action, modifiers):
@@ -96,28 +100,7 @@ class App(mglw.WindowConfig):
             self.cam_pos += Vector3([0.0, speed, 0.0])
         if self.keys.get("shift"):
             self.cam_pos += Vector3([0.0, -speed, 0.0])
-        self.program['u_camPos'] = self.cam_pos
-
-    # def assign_event_callbacks(self):
-    #     return super().assign_event_callbacks()
-
-    # def mouse_look_clb(self, window, xpos, ypos):
-    #     if self.first_mouse:
-    #         self.lastX = xpos
-    #         self.lastY = ypos
-
-    #     xOffset = xpos - self.lastX
-    #     yOffset = self.lastY - ypos
-
-    #     self.lastX = xpos
-    #     self.lastY = ypos
-
-    #     self.cam.process_mouse_movement(xOffset, yOffset)
-
-    # def mouse_enter_clb(self, window, entered):
-    #     self.first_mouse = not entered
-
-            
+        self.program['u_camPos'] = self.cam_pos      
 
 
 if __name__ == '__main__':

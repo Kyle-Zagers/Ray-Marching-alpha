@@ -245,12 +245,16 @@ void main() {
     mouse.y = clamp(mouse.y, -.3, .15);
 
 
-    vec3 rOrig = u_camPos;
-    rOrig.yz *= rotMatrix(mouse.y*3.14);
-    rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
+    vec3 rOrig = u_camPos; // Works with WASD without old camera rotation
+    rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
+
+    // Old code for camera rotation with mouse.
+    // rOrig.yz *= rotMatrix(mouse.y*3.14);
+    // rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
+    //vec3 rDir = rDir(uv, rOrig, vec3(0, 1, 0), max(0.06,u_scroll*0.05));
     
-    vec3 rDir = rDir(uv, rOrig, vec3(0., 1.0, 0.), 2.3);
-    
+    vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
+
     vec3 col = render(rOrig, rDir);
     //col = vec3(uv,0.0);
     
