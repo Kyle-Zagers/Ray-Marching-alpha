@@ -101,6 +101,21 @@ float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax)
     return res*res*(3.0-2.0*res);  // smoothstep, smoothly transition from 0 to 1
 }
 
+float calcSoftshadowV2(in vec3 ro, in vec3 rd, float mint, float maxt, float w)
+{
+    float res = 1.0;
+    float t = mint;
+    for( int i=0; i<256 && t<maxt; i++ )
+    {
+        float h = calcSDF(ro + t*rd).x;
+        res = min( res, h/(w*t) );
+        t += clamp(h, 0.005, 0.50);
+        if( res<-1.0 || t>maxt ) break;
+    }
+    res = max(res,-1.0);
+    return 0.25*(1.0+res)*(1.0+res)*(2.0-res);
+}
+
 
 vec3 calcLight(vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
     float kDiffuse = 0.4,
@@ -124,7 +139,7 @@ vec3 calcLight(vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 mater
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadow(pos, lRay, 0.01, 20.0);
+        shadow = calcSoftshadowV2(pos, lRay, 0.01, 20.0,0.01);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
