@@ -6,11 +6,10 @@ layout (location = 0) out vec4 fragColor;
 precision mediump float;
 
 uniform vec2 u_resolution;
-uniform vec2 u_mouse;
 uniform float u_time;
 uniform float u_scroll;
-//uniform int u_key;
 uniform vec3 u_camPos;
+uniform vec3 u_camTarget;
 
 const float MAX_STEPS = 100.0;
 const float MIN_DIST_TO_SDF = 0.001;
@@ -233,6 +232,7 @@ vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
 }
 
 
+
 mat2 rotMatrix(float a) {
     float s = sin(a), c = cos(a);
     return mat2(c, -s, s, c);
@@ -241,12 +241,7 @@ mat2 rotMatrix(float a) {
 
 void main() {
     vec2 uv = (gl_FragCoord.xy-.5*u_resolution.xy)/u_resolution.y;
-	vec2 mouse = u_mouse.xy/u_resolution.xy;
 
-    if (mouse.x != 0. || mouse.y != 0.) {
-        mouse -= vec2(.5, .5);
-    }
-    mouse.y = clamp(mouse.y, -.3, .15);
 
 
     vec3 rOrig = u_camPos; // Works with WASD without old camera rotation
@@ -255,11 +250,12 @@ void main() {
     // Old code for camera rotation with mouse.
     // rOrig.yz *= rotMatrix(mouse.y*3.14);
     // rOrig.xz *= rotMatrix(mouse.x*2.*3.14);
-    //vec3 rDir = rDir(uv, rOrig, vec3(0, 1, 0), max(0.06,u_scroll*0.05));
+    //vec3 rDir = rDir(uv, rOrig, u_camDir, max(0.06,u_scroll*0.05));
     
-    vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
+    //vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
+    //vec3 rDir = normalize(vec3(uv.x+u_camDir.x, uv.y+u_camDir.y, 1));
 
-    vec3 col = render(rOrig, rDir);
+    vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
     //col = vec3(uv,0.0);
     
     // col = pow(col, vec3(.4545));	// gamma correction
