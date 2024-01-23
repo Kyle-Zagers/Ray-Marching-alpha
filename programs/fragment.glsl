@@ -21,6 +21,8 @@ struct Light {
   vec3 pos;
   vec3 col;
   vec3 dir;
+  float focus;  
+  float spread;
 };
 
 float getCross(vec3 p, float size) {
@@ -45,6 +47,28 @@ float getInnerMenger(vec3 p, float size) {
     return d;
 }
 
+float fMenger(vec3 point, int degree, float size) {
+    vec3 p = point/size;
+    float d = fBox(p, vec3(1.0));
+
+    float s = 1.0;
+    for( int m=0; m<degree; m++ )
+    {
+        vec3 a = mod( p*s, 2.0 )-1.0;
+        s *= 3.0;
+        vec3 r = abs(1.0 - 3.0*abs(a));
+
+        float da = max(r.x,r.y);
+        float db = max(r.y,r.z);
+        float dc = max(r.z,r.x);
+        float c = (min(da,min(db,dc))-1.0)/s;
+
+        d = max(d,c);
+    }
+
+    return d*size;
+}
+
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
 
@@ -55,13 +79,14 @@ vec2 calcSDF(vec3 pos) {
     float longBox = fBox(pos-vec3(0, -1, -2), vec3(30, 0.5, 0.5));
     float blob = fBlob(pos-vec3(0, 1, 0));
 
-    float menger = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
-    
+    //float mengerOld = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
+    float menger = fMenger((pos-vec3(0, 5, -10)), 7, 5.0);
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
     dist = min(blob, dist);
     dist = min(box2, dist);
+    //dist = min(mengerOld, dist);
     dist = min(menger, dist);
 
     return vec2(dist, matID);
@@ -153,7 +178,7 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
 
     vec3 lRay = normalize(lightSource.pos - pos);
     
-    float light = calcDirLight(pos, lightSource.pos, lightSource.dir, 0.96, 0.86);
+    float light = calcDirLight(pos, lightSource.pos, lightSource.dir, cos(lightSource.focus), cos(lightSource.spread));
     vec3 lDirRef = reflect(lRay, normal);
 
     float shadow = 1.0;
@@ -225,12 +250,16 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     light1.pos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
     light1.col = vec3(0.6157, 0.0, 0.0);
     light1.dir = vec3(0.5, 0.0, 0.0);
+    light1.focus = radians(15.0);
+    light1.spread = radians(30.0);
     
     Light light2;
     light2.size = 0.01;
     light2.col = vec3(1);
     light2.dir = -vec3(0, 2, 10);
-    light2.pos = vec3(6, 5 , 2);
+    light2.pos = vec3(20, 20 , 2);
+    light2.focus = radians(90.0);
+    light2.spread = radians(180.0);
 
 
 
