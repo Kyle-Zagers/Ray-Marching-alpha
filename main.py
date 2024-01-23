@@ -4,10 +4,12 @@ import moderngl_window as mglw
 
 class App(mglw.WindowConfig):
     WIDTH, HEIGHT = 1920, 1080
+    fullscreen = False;
     window_size = WIDTH, HEIGHT
     resource_dir = 'programs'
     lastX, lastY = WIDTH/2, HEIGHT/2
     first_mouse = True
+    
 
     cam_pos = Vector3([0.0, 2.0, -4.0])
     cam_target = Vector3([0, 0, 0])
@@ -112,7 +114,7 @@ class App(mglw.WindowConfig):
         
 
     def key_press(self):
-        speed = 0.01
+        speed = 0.02
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):

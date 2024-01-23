@@ -11,7 +11,7 @@ uniform float u_scroll;
 uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
 
-const float MAX_STEPS = 100.0;
+const float MAX_STEPS = 500.0;
 const float MIN_DIST_TO_SDF = 0.001;
 const float MAX_DIST_TO_TRAVEL = 100.0;
 const float EPSILON = 0.001;
@@ -23,6 +23,28 @@ struct Light {
   vec3 dir;
 };
 
+float getCross(vec3 p, float size) {
+    p = abs(p) - size / 3.0;
+    float bx = max(p.y, p.z);
+    float by = max(p.x, p.z);
+    float bz = max(p.x, p.y);
+    return min(min(bx, by), bz);
+}
+
+
+float getInnerMenger(vec3 p, float size) {
+    float d = EPSILON;
+    float scale = 1.0;
+    for (int i = 0; i < 6; i++) {
+        float r = size / scale;
+        vec3 q = mod(p + r, 2.0 * r) - r;
+//        vec3 q = mod(p * (i + 1.0 * scale) / (2.0 * scale) + r, 2.0 * r) - r;
+        d = min(d, getCross(q, r));
+        scale *= 3.0;
+    }
+    return d;
+}
+
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
 
@@ -33,11 +55,14 @@ vec2 calcSDF(vec3 pos) {
     float longBox = fBox(pos-vec3(0, -1, -2), vec3(30, 0.5, 0.5));
     float blob = fBlob(pos-vec3(0, 1, 0));
 
+    float menger = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
+    
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
     dist = min(blob, dist);
     dist = min(box2, dist);
+    dist = min(menger, dist);
 
     return vec2(dist, matID);
 }
@@ -133,7 +158,7 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadowV2(pos, lRay, 0.01, 20.0, lightSource.size);
+        shadow = calcSoftshadowV2(pos, lRay, MIN_DIST_TO_SDF, 20.0, lightSource.size);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
@@ -198,8 +223,14 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     Light light1;
     light1.size = 0.01;
     light1.pos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
-    light1.col = vec3(1);
+    light1.col = vec3(0.6157, 0.0, 0.0);
     light1.dir = vec3(0.5, 0.0, 0.0);
+    
+    Light light2;
+    light2.size = 0.01;
+    light2.col = vec3(1);
+    light2.dir = -vec3(0, 2, 10);
+    light2.pos = vec3(6, 5 , 2);
 
 
 
@@ -213,6 +244,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
         float ambientOcc = calcAO(pos, normal);
 
         col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        col += calcLight(light2, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
         //col = normal;
     }
     return clamp(col, 0.0, 1.0);
@@ -231,7 +263,23 @@ vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
     return dir;
 }
 
+vec2 getUV(vec2 offset) {
+    return ((gl_FragCoord.xy + offset) - 0.5 * u_resolution.xy) / u_resolution.y;
+}
 
+vec3 rCam(vec2 offset) {
+    vec2 uv = getUV(offset);
+    vec3 rOrig = u_camPos;
+    vec3 lookat = rOrig+u_camTarget;
+    float zoom = max(0.5,(u_scroll*0.05)+0.5);
+    vec3 forward = normalize(lookat-rOrig),
+        right = normalize(cross(forward, vec3(0, 1., 0))),
+        up = cross(right, forward),
+        center = forward*zoom,
+        intersection = center + uv.x*right + uv.y*up,
+        dir = normalize(intersection);
+    return dir;
+}
 
 mat2 rotMatrix(float a) {
     float s = sin(a), c = cos(a);
@@ -239,13 +287,29 @@ mat2 rotMatrix(float a) {
 }
 
 
+
+vec3 superSample(int AA)
+{
+    vec3 col = vec3(0.0);
+    switch (AA) {
+        case 0:
+            col = vec3(getUV(vec2(0.0)), 0.0);
+            break;
+        case 1:
+            col = render(u_camPos, rCam(vec2(0.0)));
+            break;
+    }
+
+    return col;
+}
+
 void main() {
-    vec2 uv = (gl_FragCoord.xy-.5*u_resolution.xy)/u_resolution.y;
+    vec2 uv = getUV(vec2(0.0));
 
 
 
     vec3 rOrig = u_camPos; // Works with WASD without old camera rotation
-    rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
+    //rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
 
     // Old code for camera rotation with mouse.
     // rOrig.yz *= rotMatrix(mouse.y*3.14);
@@ -255,10 +319,24 @@ void main() {
     //vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
     //vec3 rDir = normalize(vec3(uv.x+u_camDir.x, uv.y+u_camDir.y, 1));
 
-    vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+
+    //vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(0.5,(u_scroll*0.05)+0.5)));
+    //vec3 col = render(rOrig, rCam(vec2(0.0)));
+
+
+    // vec4 e = vec4(0.125, -0.125, 0.375, -0.375);
+    // vec3 col = render(rOrig, rDir(getUV(e.xz), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.yw), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.wx), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.zy), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col/=4;
+
+    vec3 col = superSample(1);
+
+    col = pow(col, vec3(0.8745, 0.8745, 0.8745));	// gamma correction
+
     //col = vec3(uv,0.0);
     
-    // col = pow(col, vec3(.4545));	// gamma correction
     
     fragColor = vec4(col,1.0); 
 }
