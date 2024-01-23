@@ -80,7 +80,7 @@ vec2 calcSDF(vec3 pos) {
     float blob = fBlob(pos-vec3(0, 1, 0));
 
     //float mengerOld = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
-    float menger = fMenger((pos-vec3(0, 5, -10)), 7, 5.0);
+    float menger = fMenger((pos-vec3(0, 15, -25)), 8, 15.0);
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
@@ -386,7 +386,7 @@ void main() {
     // col += render(rOrig, rDir(getUV(e.zy), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
     // col/=4;
 
-    vec3 col = superSample(1);
+    vec3 col = superSample(2);
 
     col = pow(col, vec3(0.8745, 0.8745, 0.8745));	// gamma correction
 
