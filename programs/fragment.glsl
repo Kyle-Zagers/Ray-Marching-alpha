@@ -158,7 +158,7 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadowV2(pos, lRay, MIN_DIST_TO_SDF, 20.0, lightSource.size);
+        shadow = calcSoftshadowV2(pos, lRay, 0.05, 20.0, lightSource.size);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
@@ -253,6 +253,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
 // Camera system explained here:
 // https://www.youtube.com/watch?v=PBxuVlp7nuM
+// Old module and has been replaced
 vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
     vec3 forward = normalize(lookat-rOrig),
         right = normalize(cross(forward, vec3(0, 1., 0))),
@@ -263,10 +264,12 @@ vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
     return dir;
 }
 
+// method that can generat uv coordinates with an offset for supersampling
 vec2 getUV(vec2 offset) {
     return ((gl_FragCoord.xy + offset) - 0.5 * u_resolution.xy) / u_resolution.y;
 }
 
+// new camera module that is cleaner to call
 vec3 rCam(vec2 offset) {
     vec2 uv = getUV(offset);
     vec3 rOrig = u_camPos;
@@ -286,18 +289,40 @@ mat2 rotMatrix(float a) {
     return mat2(c, -s, s, c);
 }
 
-
-
+// can super sample at different levels to reduce aliasing
 vec3 superSample(int AA)
 {
     vec3 col = vec3(0.0);
+    float bxy = int(gl_FragCoord.x + gl_FragCoord.y) & 1;
+    float nbxy = 1. - bxy;
     switch (AA) {
         case 0:
+            col = render(u_camPos, vec3(0.0));
             col = vec3(getUV(vec2(0.0)), 0.0);
             break;
         case 1:
             col = render(u_camPos, rCam(vec2(0.0)));
             break;
+        case 2:
+            col = (render(u_camPos, rCam(vec2(0.33 * nbxy, 0.))) + render(u_camPos, rCam(vec2(0.33 * bxy, 0.66))));
+            col /= 2;
+            break;
+        case 3:
+            
+            col = (render(u_camPos, rCam(vec2(0.66 * nbxy, 0.))) +
+                  render(u_camPos, rCam(vec2(0.66 * bxy, 0.66))) +
+                  render(u_camPos, rCam(vec2(0.33, 0.33))));
+            col /= 3;
+            break;
+        case 4:
+            vec4 e = vec4(0.125, -0.125, 0.375, -0.375);
+            col = render(u_camPos, rCam(e.xz));
+            col += render(u_camPos, rCam(e.yw));
+            col += render(u_camPos, rCam(e.wx));
+            col += render(u_camPos, rCam(e.zy));
+            col /= 4;
+            break;
+
     }
 
     return col;
@@ -319,11 +344,12 @@ void main() {
     //vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
     //vec3 rDir = normalize(vec3(uv.x+u_camDir.x, uv.y+u_camDir.y, 1));
 
-
+    //old uv rendering setup
     //vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(0.5,(u_scroll*0.05)+0.5)));
+    //old rendering call using new camera module
     //vec3 col = render(rOrig, rCam(vec2(0.0)));
 
-
+    //4x supersampling
     // vec4 e = vec4(0.125, -0.125, 0.375, -0.375);
     // vec3 col = render(rOrig, rDir(getUV(e.xz), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
     // col += render(rOrig, rDir(getUV(e.yw), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
