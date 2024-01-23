@@ -97,10 +97,10 @@ float calcDirLight(vec3 p, vec3 lookfrom, vec3 lookat, in float cut1, in float c
 
 
 // https://iquilezles.org/articles/rmshadows
-float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax)
+float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax, float w)
 {
 	float t = mint;
-    float k = 20.;  // "softness" of shadow. smaller numbers = softer
+    float k = 1/(10*w);  // "softness" of shadow. smaller numbers = softer
 
     // unroll first loop iteration
     float h = calcSDF(ro + rd*t).x;
@@ -158,7 +158,7 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadowV2(pos, lRay, 0.05, 20.0, lightSource.size);
+        shadow = calcSoftshadowV2(pos, lRay, 0.01, 3.0, lightSource.size);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
