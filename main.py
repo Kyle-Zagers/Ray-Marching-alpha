@@ -21,6 +21,7 @@ class App(mglw.WindowConfig):
     cam_target = Vector3([0, 0, 0])
     yaw = 0
     pitch = 0
+    flash_light = -1;
 
 
     keys = {}
@@ -55,6 +56,7 @@ class App(mglw.WindowConfig):
 
         # uniforms
         #self.program['u_scroll'] = self.u_scroll
+        self.program['u_flashlight'] = -1
         self.program['u_resolution'] = self.window_size
         # self.program['u_camPos'] = self.cam_pos
         # self.program['u_texture1'] = 1
@@ -118,14 +120,16 @@ class App(mglw.WindowConfig):
             self.keys["D"] = action == self.wnd.keys.ACTION_PRESS
         if key == self.wnd.keys.SPACE:
             self.keys["SPACE"] = action == self.wnd.keys.ACTION_PRESS
+        if key == self.wnd.keys.F and action == self.wnd.keys.ACTION_PRESS:
+            self.flash_light *= -1
         #if modifiers == self.wnd.modifiers.ctrl:
         self.keys["shift"] = self.wnd.modifiers.shift;
-
+        self.program['u_flashlight'] = self.flash_light
         self.program['u_camPos'] = self.cam_pos
         
 
     def key_press(self):
-        speed = 0.5
+        speed = 0.2
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):

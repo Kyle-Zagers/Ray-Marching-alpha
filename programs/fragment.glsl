@@ -10,6 +10,7 @@ uniform float u_time;
 uniform float u_scroll;
 uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
+uniform int u_flashlight;
 
 const float MAX_STEPS = 500.0;
 const float MIN_DIST_TO_SDF = 0.000001;
@@ -195,7 +196,7 @@ float rMarch(vec3 rOrig, vec3 rDir) {
         vec3 rPos = rOrig + rDir * dOrig;
         float dSurf = calcSDF(rPos).x;
         dOrig += dSurf;
-        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF*(dOrig*10)) break;
+        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF*(dOrig*1000)) break;
     }
 
     return dOrig;
@@ -224,6 +225,16 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     light2.focus = radians(90.0);
     light2.spread = radians(180.0);
 
+    
+    // flashlight
+    Light fLight;
+    fLight.size = 0.0001;
+    fLight.pos = u_camPos;
+    fLight.col = vec3(0.6431, 0.6118, 0.498);
+    fLight.dir = u_camPos + u_camTarget;
+    fLight.focus = radians(15.0);
+    fLight.spread = radians(30.0);
+
 
 
     if (dist<MAX_DIST_TO_TRAVEL) {
@@ -237,6 +248,9 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
         col += calcLight(light2, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        if (u_flashlight>0) {
+            col += calcLight(fLight, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);    
+        }
         //col = abs(normal);
     }
     return clamp(col, 0.0, 1.0);
