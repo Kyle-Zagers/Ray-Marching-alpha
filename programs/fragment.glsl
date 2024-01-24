@@ -12,9 +12,12 @@ uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
 
 const float MAX_STEPS = 500.0;
-const float MIN_DIST_TO_SDF = 0.001;
+const float MIN_DIST_TO_SDF = 0.000001;
 const float MAX_DIST_TO_TRAVEL = 100.0;
 const float EPSILON = 0.001;
+
+
+
 
 struct Light {
   float size;
@@ -232,7 +235,7 @@ float rMarch(vec3 rOrig, vec3 rDir) {
         vec3 rPos = rOrig + rDir * dOrig;
         float dSurf = calcSDF(rPos).x;
         dOrig += dSurf;
-        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF) break;
+        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF*(dOrig*10)) break;
     }
 
     return dOrig;
@@ -274,7 +277,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
         col += calcLight(light2, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
-        //col = normal;
+        //col = abs(normal);
     }
     return clamp(col, 0.0, 1.0);
 }
