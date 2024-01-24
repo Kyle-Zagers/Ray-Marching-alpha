@@ -115,7 +115,7 @@ class App(mglw.WindowConfig):
         
 
     def key_press(self):
-        speed = 0.005
+        speed = 0.5
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):
