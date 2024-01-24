@@ -10,11 +10,10 @@ uniform float u_time;
 uniform float u_scroll;
 uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
-uniform vec3 u_boxes[];
 
-const float MAX_STEPS = 100.0;
+const float MAX_STEPS = 500.0;
 const float MIN_DIST_TO_SDF = 0.001;
-const float MAX_DIST_TO_TRAVEL = 1000.0; // render distance
+const float MAX_DIST_TO_TRAVEL = 100.0; // render distance
 const float EPSILON = 0.001;
 
 struct Light {
@@ -22,31 +21,73 @@ struct Light {
   vec3 pos;
   vec3 col;
   vec3 dir;
+  float focus;  
+  float spread;
 };
 
+float getCross(vec3 p, float size) {
+    p = abs(p) - size / 3.0;
+    float bx = max(p.y, p.z);
+    float by = max(p.x, p.z);
+    float bz = max(p.x, p.y);
+    return min(min(bx, by), bz);
+}
+
+
+float getInnerMenger(vec3 p, float size) {
+    float d = EPSILON;
+    float scale = 1.0;
+    for (int i = 0; i < 6; i++) {
+        float r = size / scale;
+        vec3 q = mod(p + r, 2.0 * r) - r;
+//        vec3 q = mod(p * (i + 1.0 * scale) / (2.0 * scale) + r, 2.0 * r) - r;
+        d = min(d, getCross(q, r));
+        scale *= 3.0;
+    }
+    return d;
+}
+
+float fMenger(vec3 point, int degree, float size) {
+    vec3 p = point/size;
+    float d = fBox(p, vec3(1.0));
+
+    float s = 1.0;
+    for( int m=0; m<degree; m++ )
+    {
+        vec3 a = mod( p*s, 2.0 )-1.0;
+        s *= 3.0;
+        vec3 r = abs(1.0 - 3.0*abs(a));
+
+        float da = max(r.x,r.y);
+        float db = max(r.y,r.z);
+        float dc = max(r.z,r.x);
+        float c = (min(da,min(db,dc))-1.0)/s;
+
+        d = max(d,c);
+    }
+
+    return d*size;
+}
 
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
 
 
     float plane = fPlane(pos, vec3(0.0, 1.0, 0.0), 1.0);
-    // float box = fBox(pos-vec3(-4, -0.5, -3), vec3(0.5));
-    // float box2 = fBox(pos-vec3(1.5, -0.5, -3), vec3(0.5));
-    float box = fBox(pos-u_boxes[0], vec3(0.5));
-    float box2 = fBox(pos-u_boxes[1], vec3(0.5));
+    float box = fBox(pos-vec3(-4, -0.5, -3), vec3(0.5));
+    float box2 = fBox(pos-vec3(1.5, -0.5, -3), vec3(0.5));
     float longBox = fBox(pos-vec3(0, -1, -2), vec3(30, 0.5, 0.5));
     float blob = fBlob(pos-vec3(0, 1, 0));
 
-    vec4 tmp;
-
-    float mandel = mandelbulb(pos-vec3(0, 1, 0), tmp);
-
+    //float mengerOld = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
+    float menger = fMenger((pos-vec3(0, 15, -25)), 8, 15.0);
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
-    //dist = min(blob, dist);
+    dist = min(blob, dist);
     dist = min(box2, dist);
-    dist = min(mandel, dist);
+    //dist = min(mengerOld, dist);
+    dist = min(menger, dist);
 
     return vec2(dist, matID);
 }
@@ -81,10 +122,10 @@ float calcDirLight(vec3 p, vec3 lookfrom, vec3 lookat, in float cut1, in float c
 
 
 // https://iquilezles.org/articles/rmshadows
-float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax)
+float calcSoftshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax, float w)
 {
 	float t = mint;
-    float k = 20.;  // "softness" of shadow. smaller numbers = softer
+    float k = 1/(10*w);  // "softness" of shadow. smaller numbers = softer
 
     // unroll first loop iteration
     float h = calcSDF(ro + rd*t).x;
@@ -123,11 +164,12 @@ float calcSoftshadowV2(in vec3 ro, in vec3 rd, float mint, float maxt, float w)
 }
 
 
-vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, float kSpecular) {
+vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
     float kDiffuse = 0.4,
         kAmbient = 0.05;
 
-    vec3 iSpecular = 6.*lightSource.col,  // intensity
+    vec3 col_light = vec3(1.0),
+        iSpecular = 6.*lightSource.col,  // intensity
         iDiffuse = 2.*lightSource.col,
         iAmbient = 1.*lightSource.col;
 
@@ -136,18 +178,18 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
 
     vec3 lRay = normalize(lightSource.pos - pos);
     
-    float light = calcDirLight(pos, lightSource.pos, lightSource.dir, 0.96, 0.86);
+    float light = calcDirLight(pos, lightSource.pos, lightSource.dir, cos(lightSource.focus), cos(lightSource.spread));
     vec3 lDirRef = reflect(lRay, normal);
 
     float shadow = 1.0;
     if (light > 0.001) { // no need to calculate shadow if we're in the dark
-        shadow = calcSoftshadowV2(pos, lRay, 0.01, 20.0, lightSource.size);
+        shadow = calcSoftshadowV2(pos, lRay, 0.01, 3.0, lightSource.size);
     }
     vec3 dif = light*kDiffuse*iDiffuse*max(dot(lRay, normal), 0.)*shadow;
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
     vec3 amb = light*kAmbient*iAmbient*ambientOcc;
 
-    return lightSource.col*(amb + dif + spec);
+    return material*(amb + dif + spec);
     
 }
 
@@ -206,14 +248,18 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     Light light1;
     light1.size = 0.01;
     light1.pos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
-    light1.col = vec3(1.0, 0.0, 0.0);
+    light1.col = vec3(0.6157, 0.0, 0.0);
     light1.dir = vec3(0.5, 0.0, 0.0);
-
+    light1.focus = radians(15.0);
+    light1.spread = radians(30.0);
+    
     Light light2;
-    light2.size = 0.1;
-    light2.pos = vec3(20, 100, 0);
+    light2.size = 0.01;
     light2.col = vec3(1);
-    light2.dir = vec3(20, -1, 0);
+    light2.dir = -vec3(0, 2, 10);
+    light2.pos = vec3(20, 20 , 2);
+    light2.focus = radians(90.0);
+    light2.spread = radians(180.0);
 
 
 
@@ -226,9 +272,9 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         float ambientOcc = calcAO(pos, normal);
 
-        col += calcLight(light1, pos, normal, rDirRef, ambientOcc, 0.5);
-        col += calcLight(light2, pos, normal, rDirRef, ambientOcc, 0.5);
-        //col = normal; // for checking normals
+        col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        col += calcLight(light2, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
+        //col = normal;
     }
     return clamp(col, 0.0, 1.0);
 }
@@ -236,6 +282,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
 // Camera system explained here:
 // https://www.youtube.com/watch?v=PBxuVlp7nuM
+// Old module and has been replaced
 vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
     vec3 forward = normalize(lookat-rOrig),
         right = normalize(cross(forward, vec3(0, 1., 0))),
@@ -246,21 +293,77 @@ vec3 rDir(vec2 uv, vec3 rOrig, vec3 lookat, float zoom) {
     return dir;
 }
 
+// method that can generat uv coordinates with an offset for supersampling
+vec2 getUV(vec2 offset) {
+    return ((gl_FragCoord.xy + offset) - 0.5 * u_resolution.xy) / u_resolution.y;
+}
 
+// new camera module that is cleaner to call
+vec3 rCam(vec2 offset) {
+    vec2 uv = getUV(offset);
+    vec3 rOrig = u_camPos;
+    vec3 lookat = rOrig+u_camTarget;
+    float zoom = max(0.5,(u_scroll*0.05)+0.5);
+    vec3 forward = normalize(lookat-rOrig),
+        right = normalize(cross(forward, vec3(0, 1., 0))),
+        up = cross(right, forward),
+        center = forward*zoom,
+        intersection = center + uv.x*right + uv.y*up,
+        dir = normalize(intersection);
+    return dir;
+}
 
 mat2 rotMatrix(float a) {
     float s = sin(a), c = cos(a);
     return mat2(c, -s, s, c);
 }
 
+// can super sample at different levels to reduce aliasing
+vec3 superSample(int AA)
+{
+    vec3 col = vec3(0.0);
+    float bxy = int(gl_FragCoord.x + gl_FragCoord.y) & 1;
+    float nbxy = 1. - bxy;
+    switch (AA) {
+        case 0:
+            col = render(u_camPos, vec3(0.0));
+            col = vec3(getUV(vec2(0.0)), 0.0);
+            break;
+        case 1:
+            col = render(u_camPos, rCam(vec2(0.0)));
+            break;
+        case 2:
+            col = (render(u_camPos, rCam(vec2(0.33 * nbxy, 0.))) + render(u_camPos, rCam(vec2(0.33 * bxy, 0.66))));
+            col /= 2;
+            break;
+        case 3:
+            
+            col = (render(u_camPos, rCam(vec2(0.66 * nbxy, 0.))) +
+                  render(u_camPos, rCam(vec2(0.66 * bxy, 0.66))) +
+                  render(u_camPos, rCam(vec2(0.33, 0.33))));
+            col /= 3;
+            break;
+        case 4:
+            vec4 e = vec4(0.125, -0.125, 0.375, -0.375);
+            col = render(u_camPos, rCam(e.xz));
+            col += render(u_camPos, rCam(e.yw));
+            col += render(u_camPos, rCam(e.wx));
+            col += render(u_camPos, rCam(e.zy));
+            col /= 4;
+            break;
+
+    }
+
+    return col;
+}
 
 void main() {
-    vec2 uv = (gl_FragCoord.xy-.5*u_resolution.xy)/u_resolution.y;
+    vec2 uv = getUV(vec2(0.0));
 
 
 
     vec3 rOrig = u_camPos; // Works with WASD without old camera rotation
-    rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
+    //rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
 
     // Old code for camera rotation with mouse.
     // rOrig.yz *= rotMatrix(mouse.y*3.14);
@@ -270,10 +373,25 @@ void main() {
     //vec3 rDir = normalize(vec3(uv.x-.15, uv.y-.2, 1)); // New constant rDir
     //vec3 rDir = normalize(vec3(uv.x+u_camDir.x, uv.y+u_camDir.y, 1));
 
-    vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    //old uv rendering setup
+    //vec3 col = render(rOrig, rDir(uv, rOrig, rOrig+u_camTarget, max(0.5,(u_scroll*0.05)+0.5)));
+    //old rendering call using new camera module
+    //vec3 col = render(rOrig, rCam(vec2(0.0)));
+
+    //4x supersampling
+    // vec4 e = vec4(0.125, -0.125, 0.375, -0.375);
+    // vec3 col = render(rOrig, rDir(getUV(e.xz), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.yw), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.wx), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col += render(rOrig, rDir(getUV(e.zy), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
+    // col/=4;
+
+    vec3 col = superSample(2);
+
+    col = pow(col, vec3(0.8745, 0.8745, 0.8745));	// gamma correction
+
     //col = vec3(uv,0.0);
     
-    // col = pow(col, vec3(.4545));	// gamma correction
     
     fragColor = vec4(col,1.0); 
 }

@@ -1,21 +1,22 @@
 import math
-import numpy as np
 from pyrr import Vector3, vector, vector3, matrix44
 import moderngl_window as mglw
 
 class App(mglw.WindowConfig):
-    WIDTH, HEIGHT = 1920, 1080
+    WIDTH, HEIGHT = 1280, 720
+    # WIDTH, HEIGHT = 1920, 1080
+    fullscreen = False;
     window_size = WIDTH, HEIGHT
     resource_dir = 'programs'
     lastX, lastY = WIDTH/2, HEIGHT/2
     first_mouse = True
+    
 
     cam_pos = Vector3([0.0, 2.0, -4.0])
     cam_target = Vector3([0, 0, 0])
     yaw = 0
     pitch = 0
 
-    boxes = np.array([Vector3([-4, -0.5, -3]), Vector3([1.5, -0.5, -3])])
 
     keys = {}
 
@@ -53,8 +54,6 @@ class App(mglw.WindowConfig):
         # self.program['u_texture5'] = 5
         # self.program['u_texture6'] = 6
         # self.program['u_texture7'] = 7
-        self.program['u_boxes'] = self.boxes
-
         
 
     def render(self, time, frame_time):
