@@ -1,6 +1,11 @@
+from array import array
 import math
+import moderngl
 from pyrr import Vector3, vector, vector3, matrix44
 import moderngl_window as mglw
+
+
+
 
 class App(mglw.WindowConfig):
     WIDTH, HEIGHT = 1280, 720
@@ -20,11 +25,16 @@ class App(mglw.WindowConfig):
 
     keys = {}
 
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.quad = mglw.geometry.quad_fs()
         self.program = self.load_program(vertex_shader='vertex.glsl', fragment_shader='fragment.glsl')
         self.u_scroll = 1.0
+
+        ctx = moderngl.create_context()
+
+        sdfBuffer = ctx.buffer(data=array("f",[1.0,1.0]))
         
         # keys
 
