@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from pyrr import Vector3, vector, vector3, matrix44
 import moderngl_window as mglw
 
@@ -14,6 +15,7 @@ class App(mglw.WindowConfig):
     yaw = 0
     pitch = 0
 
+    boxes = np.array([Vector3([-4, -0.5, -3]), Vector3([1.5, -0.5, -3])])
 
     keys = {}
 
@@ -51,6 +53,8 @@ class App(mglw.WindowConfig):
         # self.program['u_texture5'] = 5
         # self.program['u_texture6'] = 6
         # self.program['u_texture7'] = 7
+        self.program['u_boxes'] = self.boxes
+
         
 
     def render(self, time, frame_time):
@@ -112,7 +116,7 @@ class App(mglw.WindowConfig):
         
 
     def key_press(self):
-        speed = 0.01
+        speed = 0.005
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):

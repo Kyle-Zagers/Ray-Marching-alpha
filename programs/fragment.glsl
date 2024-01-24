@@ -10,10 +10,11 @@ uniform float u_time;
 uniform float u_scroll;
 uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
+uniform vec3 u_boxes[];
 
 const float MAX_STEPS = 100.0;
 const float MIN_DIST_TO_SDF = 0.001;
-const float MAX_DIST_TO_TRAVEL = 100.0;
+const float MAX_DIST_TO_TRAVEL = 1000.0; // render distance
 const float EPSILON = 0.001;
 
 struct Light {
@@ -23,21 +24,29 @@ struct Light {
   vec3 dir;
 };
 
+
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
 
 
     float plane = fPlane(pos, vec3(0.0, 1.0, 0.0), 1.0);
-    float box = fBox(pos-vec3(-4, -0.5, -3), vec3(0.5));
-    float box2 = fBox(pos-vec3(1.5, -0.5, -3), vec3(0.5));
+    // float box = fBox(pos-vec3(-4, -0.5, -3), vec3(0.5));
+    // float box2 = fBox(pos-vec3(1.5, -0.5, -3), vec3(0.5));
+    float box = fBox(pos-u_boxes[0], vec3(0.5));
+    float box2 = fBox(pos-u_boxes[1], vec3(0.5));
     float longBox = fBox(pos-vec3(0, -1, -2), vec3(30, 0.5, 0.5));
     float blob = fBlob(pos-vec3(0, 1, 0));
+
+    vec4 tmp;
+
+    float mandel = mandelbulb(pos-vec3(0, 1, 0), tmp);
 
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
-    dist = min(blob, dist);
+    //dist = min(blob, dist);
     dist = min(box2, dist);
+    dist = min(mandel, dist);
 
     return vec2(dist, matID);
 }
@@ -114,12 +123,11 @@ float calcSoftshadowV2(in vec3 ro, in vec3 rd, float mint, float maxt, float w)
 }
 
 
-vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
+vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, float kSpecular) {
     float kDiffuse = 0.4,
         kAmbient = 0.05;
 
-    vec3 col_light = vec3(1.0),
-        iSpecular = 6.*lightSource.col,  // intensity
+    vec3 iSpecular = 6.*lightSource.col,  // intensity
         iDiffuse = 2.*lightSource.col,
         iAmbient = 1.*lightSource.col;
 
@@ -139,7 +147,7 @@ vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float amb
     vec3 spec = light*kSpecular*iSpecular*pow(max(dot(lRay, rDirRef), 0.), alpha_phong)*shadow;
     vec3 amb = light*kAmbient*iAmbient*ambientOcc;
 
-    return material*(amb + dif + spec);
+    return lightSource.col*(amb + dif + spec);
     
 }
 
@@ -198,8 +206,14 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     Light light1;
     light1.size = 0.01;
     light1.pos = vec3(5.*cos(-u_time), 4, 5.*sin(-u_time)); // light position
-    light1.col = vec3(1);
+    light1.col = vec3(1.0, 0.0, 0.0);
     light1.dir = vec3(0.5, 0.0, 0.0);
+
+    Light light2;
+    light2.size = 0.1;
+    light2.pos = vec3(20, 100, 0);
+    light2.col = vec3(1);
+    light2.dir = vec3(20, -1, 0);
 
 
 
@@ -212,8 +226,9 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         float ambientOcc = calcAO(pos, normal);
 
-        col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
-        //col = normal;
+        col += calcLight(light1, pos, normal, rDirRef, ambientOcc, 0.5);
+        col += calcLight(light2, pos, normal, rDirRef, ambientOcc, 0.5);
+        //col = normal; // for checking normals
     }
     return clamp(col, 0.0, 1.0);
 }
