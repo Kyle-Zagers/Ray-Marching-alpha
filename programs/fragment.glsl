@@ -16,6 +16,7 @@ const float MAX_STEPS = 500.0;
 const float MIN_DIST_TO_SDF = 0.000001;
 const float MAX_DIST_TO_TRAVEL = 100.0;
 const float EPSILON = 0.001;
+const float LOD_MULTIPLIER = 50;
 
 
 
@@ -196,7 +197,7 @@ float rMarch(vec3 rOrig, vec3 rDir) {
         vec3 rPos = rOrig + rDir * dOrig;
         float dSurf = calcSDF(rPos).x;
         dOrig += dSurf;
-        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF*(dOrig*1000)) break;
+        if(dOrig > MAX_DIST_TO_TRAVEL || abs(dSurf) < MIN_DIST_TO_SDF*clamp(((dOrig*dOrig-3)*LOD_MULTIPLIER),1,MAX_DIST_TO_TRAVEL*MAX_DIST_TO_TRAVEL*LOD_MULTIPLIER)) break;
     }
 
     return dOrig;
