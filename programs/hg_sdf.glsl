@@ -718,30 +718,6 @@ float mandelbulb( in vec3 p, out vec4 resColor )
     return 0.25*log(m)*sqrt(m)/dz;
 }
 
-const float EPSILON = 0.001;
-
-float getCross(vec3 p, float size) {
-    p = abs(p) - size / 3.0;
-    float bx = max(p.y, p.z);
-    float by = max(p.x, p.z);
-    float bz = max(p.x, p.y);
-    return min(min(bx, by), bz);
-}
-
-
-float getInnerMenger(vec3 p, float size) {
-    float d = EPSILON;
-    float scale = 1.0;
-    for (int i = 0; i < 6; i++) {
-        float r = size / scale;
-        vec3 q = mod(p + r, 2.0 * r) - r;
-//        vec3 q = mod(p * (i + 1.0 * scale) / (2.0 * scale) + r, 2.0 * r) - r;
-        d = min(d, getCross(q, r));
-        scale *= 3.0;
-    }
-    return d;
-}
-
 float fMenger(vec3 point, int degree, float size) {
     vec3 p = point/size;
     float d = fBox(p, vec3(1.0));
