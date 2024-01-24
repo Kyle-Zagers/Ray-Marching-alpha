@@ -28,49 +28,6 @@ struct Light {
   float spread;
 };
 
-float getCross(vec3 p, float size) {
-    p = abs(p) - size / 3.0;
-    float bx = max(p.y, p.z);
-    float by = max(p.x, p.z);
-    float bz = max(p.x, p.y);
-    return min(min(bx, by), bz);
-}
-
-
-float getInnerMenger(vec3 p, float size) {
-    float d = EPSILON;
-    float scale = 1.0;
-    for (int i = 0; i < 6; i++) {
-        float r = size / scale;
-        vec3 q = mod(p + r, 2.0 * r) - r;
-//        vec3 q = mod(p * (i + 1.0 * scale) / (2.0 * scale) + r, 2.0 * r) - r;
-        d = min(d, getCross(q, r));
-        scale *= 3.0;
-    }
-    return d;
-}
-
-float fMenger(vec3 point, int degree, float size) {
-    vec3 p = point/size;
-    float d = fBox(p, vec3(1.0));
-
-    float s = 1.0;
-    for( int m=0; m<degree; m++ )
-    {
-        vec3 a = mod( p*s, 2.0 )-1.0;
-        s *= 3.0;
-        vec3 r = abs(1.0 - 3.0*abs(a));
-
-        float da = max(r.x,r.y);
-        float db = max(r.y,r.z);
-        float dc = max(r.z,r.x);
-        float c = (min(da,min(db,dc))-1.0)/s;
-
-        d = max(d,c);
-    }
-
-    return d*size;
-}
 
 vec2 calcSDF(vec3 pos) {
     float matID = 0.0; //temporary default
@@ -84,6 +41,8 @@ vec2 calcSDF(vec3 pos) {
 
     //float mengerOld = max(fBox(pos-vec3(0, 2, -10), vec3(2.0)), -getInnerMenger(pos-vec3(0, 2, -10), 2.0));
     float menger = fMenger((pos-vec3(0, 15, -25)), 8, 15.0);
+    vec4 temp;
+    float mandel = mandelbulb(pos-vec3(5, 1, 0), temp);
 
     float dist = min(plane, box);
     dist = min(longBox, dist);
@@ -91,6 +50,7 @@ vec2 calcSDF(vec3 pos) {
     dist = min(box2, dist);
     //dist = min(mengerOld, dist);
     dist = min(menger, dist);
+    dist = min(mandel, dist);
 
     return vec2(dist, matID);
 }
@@ -364,7 +324,6 @@ void main() {
     vec2 uv = getUV(vec2(0.0));
 
 
-
     vec3 rOrig = u_camPos; // Works with WASD without old camera rotation
     //rOrig = rOrig / ((u_scroll+1)*0.1); // New scroll zoom.
 
@@ -389,7 +348,7 @@ void main() {
     // col += render(rOrig, rDir(getUV(e.zy), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
     // col/=4;
 
-    vec3 col = superSample(2);
+    vec3 col = superSample(1);
 
     col = pow(col, vec3(0.8745, 0.8745, 0.8745));	// gamma correction
 

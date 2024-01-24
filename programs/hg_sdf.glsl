@@ -661,3 +661,105 @@ float fOpTongue(float a, float b, float ra, float rb) {
 	return min(a, max(a - ra, abs(b) - rb));
 }
 
+
+// SDFs added by Kyle Zagers and Kai Vedder.
+
+float mandelbulb( in vec3 p, out vec4 resColor )
+{
+    vec3 w = p;
+    float m = dot(w,w);
+
+    vec4 trap = vec4(abs(w),m);
+	float dz = 1.0;
+    
+	for( int i=0; i<4; i++ )
+    {
+#if 0
+        // polynomial version (no trigonometrics, but MUCH slower)
+        float m2 = m*m;
+        float m4 = m2*m2;
+		dz = 8.0*sqrt(m4*m2*m)*dz + 1.0;
+
+        float x = w.x; float x2 = x*x; float x4 = x2*x2;
+        float y = w.y; float y2 = y*y; float y4 = y2*y2;
+        float z = w.z; float z2 = z*z; float z4 = z2*z2;
+
+        float k3 = x2 + z2;
+        float k2 = inversesqrt( k3*k3*k3*k3*k3*k3*k3 );
+        float k1 = x4 + y4 + z4 - 6.0*y2*z2 - 6.0*x2*y2 + 2.0*z2*x2;
+        float k4 = x2 - y2 + z2;
+
+        w.x = p.x +  64.0*x*y*z*(x2-z2)*k4*(x4-6.0*x2*z2+z4)*k1*k2;
+        w.y = p.y + -16.0*y2*k3*k4*k4 + k1*k1;
+        w.z = p.z +  -8.0*y*k4*(x4*x4 - 28.0*x4*x2*z2 + 70.0*x4*z4 - 28.0*x2*z2*z4 + z4*z4)*k1*k2;
+#else
+        // trigonometric version (MUCH faster than polynomial)
+        
+        // dz = 8*z^7*dz
+		dz = 8.0*pow(m,3.5)*dz + 1.0;
+      
+        // z = z^8+c
+        float r = length(w);
+        float b = 8.0*acos( w.y/r);
+        float a = 8.0*atan( w.x, w.z );
+        w = p + pow(r,8.0) * vec3( sin(b)*sin(a), cos(b), sin(b)*cos(a) );
+#endif        
+        
+        trap = min( trap, vec4(abs(w),m) );
+
+        m = dot(w,w);
+		if( m > 256.0 )
+            break;
+    }
+
+    resColor = vec4(m,trap.yzw);
+
+    // distance estimation (through the Hubbard-Douady potential)
+    return 0.25*log(m)*sqrt(m)/dz;
+}
+
+const float EPSILON = 0.001;
+
+float getCross(vec3 p, float size) {
+    p = abs(p) - size / 3.0;
+    float bx = max(p.y, p.z);
+    float by = max(p.x, p.z);
+    float bz = max(p.x, p.y);
+    return min(min(bx, by), bz);
+}
+
+
+float getInnerMenger(vec3 p, float size) {
+    float d = EPSILON;
+    float scale = 1.0;
+    for (int i = 0; i < 6; i++) {
+        float r = size / scale;
+        vec3 q = mod(p + r, 2.0 * r) - r;
+//        vec3 q = mod(p * (i + 1.0 * scale) / (2.0 * scale) + r, 2.0 * r) - r;
+        d = min(d, getCross(q, r));
+        scale *= 3.0;
+    }
+    return d;
+}
+
+float fMenger(vec3 point, int degree, float size) {
+    vec3 p = point/size;
+    float d = fBox(p, vec3(1.0));
+
+    float s = 1.0;
+    for( int m=0; m<degree; m++ )
+    {
+        vec3 a = mod( p*s, 2.0 )-1.0;
+        s *= 3.0;
+        vec3 r = abs(1.0 - 3.0*abs(a));
+
+        float da = max(r.x,r.y);
+        float db = max(r.y,r.z);
+        float dc = max(r.z,r.x);
+        float c = (min(da,min(db,dc))-1.0)/s;
+
+        d = max(d,c);
+    }
+
+    return d*size;
+}
