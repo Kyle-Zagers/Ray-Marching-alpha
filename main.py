@@ -121,8 +121,13 @@ class App(mglw.WindowConfig):
             self.keys["D"] = action == self.wnd.keys.ACTION_PRESS
         if key == self.wnd.keys.SPACE:
             self.keys["SPACE"] = action == self.wnd.keys.ACTION_PRESS
+
+        self.keys["ctrl"] = modifiers.ctrl        
+        self.keys["alt"] = modifiers.alt        
+
         if key == self.wnd.keys.F and action == self.wnd.keys.ACTION_PRESS:
             self.flash_light *= -1
+        
         if key == self.wnd.keys.NUMBER_0 and action == self.wnd.keys.ACTION_PRESS:
             self.program['u_renderMode'] = 0
         if key == self.wnd.keys.NUMBER_1 and action == self.wnd.keys.ACTION_PRESS:
@@ -133,14 +138,20 @@ class App(mglw.WindowConfig):
             self.program['u_renderMode'] = 3
         if key == self.wnd.keys.NUMBER_4 and action == self.wnd.keys.ACTION_PRESS:
             self.program['u_renderMode'] = 4
-        #if modifiers == self.wnd.modifiers.ctrl:
+        
         self.keys["shift"] = self.wnd.modifiers.shift;
+
         self.program['u_flashlight'] = self.flash_light
         self.program['u_camPos'] = self.cam_pos
         
 
     def key_press(self):
-        speed = 0.2
+        speed = 0.08
+        if self.keys.get("ctrl"):
+            speed = 0.3
+        if self.keys.get("alt"):
+            speed = 0.005
+            
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):
