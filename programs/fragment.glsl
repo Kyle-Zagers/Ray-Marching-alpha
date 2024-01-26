@@ -11,6 +11,7 @@ uniform float u_scroll;
 uniform vec3 u_camPos;
 uniform vec3 u_camTarget;
 uniform int u_flashlight;
+uniform int u_renderMode;
 
 const float MAX_STEPS = 500.0;
 const float MIN_DIST_TO_SDF = 0.000001;
@@ -380,7 +381,7 @@ void main() {
     // col += render(rOrig, rDir(getUV(e.zy), rOrig, rOrig+u_camTarget, max(1,u_scroll*0.05)));
     // col/=4;
 
-    vec3 col = superSample(1);
+    vec3 col = superSample(u_renderMode);
 
     col = pow(col, vec3( 1.0 / 2.2));	// gamma correction
 

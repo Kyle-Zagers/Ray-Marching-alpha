@@ -57,6 +57,7 @@ class App(mglw.WindowConfig):
         # uniforms
         #self.program['u_scroll'] = self.u_scroll
         self.program['u_flashlight'] = -1
+        self.program['u_renderMode'] = 1
         self.program['u_resolution'] = self.window_size
         # self.program['u_camPos'] = self.cam_pos
         # self.program['u_texture1'] = 1
@@ -122,6 +123,16 @@ class App(mglw.WindowConfig):
             self.keys["SPACE"] = action == self.wnd.keys.ACTION_PRESS
         if key == self.wnd.keys.F and action == self.wnd.keys.ACTION_PRESS:
             self.flash_light *= -1
+        if key == self.wnd.keys.NUMBER_0 and action == self.wnd.keys.ACTION_PRESS:
+            self.program['u_renderMode'] = 0
+        if key == self.wnd.keys.NUMBER_1 and action == self.wnd.keys.ACTION_PRESS:
+            self.program['u_renderMode'] = 1
+        if key == self.wnd.keys.NUMBER_2 and action == self.wnd.keys.ACTION_PRESS:
+            self.program['u_renderMode'] = 2
+        if key == self.wnd.keys.NUMBER_3 and action == self.wnd.keys.ACTION_PRESS:
+            self.program['u_renderMode'] = 3
+        if key == self.wnd.keys.NUMBER_4 and action == self.wnd.keys.ACTION_PRESS:
+            self.program['u_renderMode'] = 4
         #if modifiers == self.wnd.modifiers.ctrl:
         self.keys["shift"] = self.wnd.modifiers.shift;
         self.program['u_flashlight'] = self.flash_light
