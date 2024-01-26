@@ -149,12 +149,11 @@ float calcSoftshadowV3(in vec3 ro, in vec3 rd, float mint, float maxt, float w) 
 
 vec3 calcLight(Light lightSource, vec3 pos, vec3 normal, vec3 rDirRef, float ambientOcc, vec3 material, float kSpecular) {
     float kDiffuse = 0.4,
-        kAmbient = 0.05;
+        kAmbient = 0.005;
 
-    vec3 col_light = vec3(1.0),
-        iSpecular = 6.*lightSource.col,  // intensity
+    vec3 iSpecular = 6.*lightSource.col,  // intensity
         iDiffuse = 2.*lightSource.col,
-        iAmbient = 1.*lightSource.col;
+        iAmbient = 1.5*lightSource.col;
 
     float alpha_phong = 20.0; // phong alpha component
 
@@ -223,7 +222,7 @@ float rMarch(vec3 rOrig, vec3 rDir) {
 
 
 vec3 render(vec3 rOrig, vec3 rDir) {
-    vec3 col = vec3(0.05);
+    vec3 col = vec3(0.005);
 
     float dist = rMarch(rOrig, rDir);
 
@@ -267,7 +266,7 @@ vec3 render(vec3 rOrig, vec3 rDir) {
 
         col += calcLight(light1, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
         col += calcLight(light2, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);
-        if (u_flashlight>0) {
+        if (u_flashlight>0) {            
             col += calcLight(fLight, pos, normal, rDirRef, ambientOcc, vec3(1.0, 1.0, 1.0), 0.5);    
         }
         //col = abs(normal);
@@ -383,7 +382,7 @@ void main() {
 
     vec3 col = superSample(1);
 
-    col = pow(col, vec3(0.8745, 0.8745, 0.8745));	// gamma correction
+    col = pow(col, vec3( 1.0 / 2.2));	// gamma correction
 
     //col = vec3(uv,0.0);
     
