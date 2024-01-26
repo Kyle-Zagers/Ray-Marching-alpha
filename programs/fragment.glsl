@@ -239,10 +239,10 @@ vec3 render(vec3 rOrig, vec3 rDir) {
     Light light2;
     light2.size = 0.01;
     light2.col = vec3(1);
-    light2.dir = -vec3(0, 2, 10);
-    light2.pos = vec3(20, 20 , 2);
-    light2.focus = radians(90.0);
-    light2.spread = radians(180.0);
+    light2.dir = vec3(-15, 20, -25);
+    light2.pos = vec3(100, 50 , 20);
+    light2.focus = radians(10.0);
+    light2.spread = radians(20.0);
 
     
     // flashlight
