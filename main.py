@@ -138,7 +138,6 @@ class App(mglw.WindowConfig):
                 self.program['u_renderMode'] = 4
 
         self.keys["shift"] = self.wnd.modifiers.shift
-        self.program['u_camPos'] = self.cam_pos
 
         self.keys["ctrl"] =self.wnd.modifiers.ctrl
         self.keys["alt"] = self.wnd.modifiers.alt      
