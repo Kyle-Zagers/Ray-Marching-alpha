@@ -33,14 +33,12 @@ class App(mglw.WindowConfig):
 
         ctx = moderngl.create_context()
 
+        # <><><><><><><> temporary buffer experiment <><><><><><><><>
         sdfBuffer = ctx.buffer(data=array("f",[1.0,1.0]))
         
-        # keys
 
-        # mouse // New code for cursor hiding. Still experimenting.
-
+        # locks mouse into window
         self.wnd.cursor = True
-        #self.wnd._mouse_pos = 300,300
         self.wnd.mouse_exclusivity = True
 
         # textures
@@ -53,11 +51,9 @@ class App(mglw.WindowConfig):
         self.texture7 = self.load_texture_2d('../textures/roof/height3.png')  # roof bump
 
         # uniforms
-        #self.program['u_scroll'] = self.u_scroll
-        self.program['u_flashlight'] = -1
-        self.program['u_renderMode'] = 1
-        self.program['u_resolution'] = self.window_size
-        # self.program['u_camPos'] = self.cam_pos
+        self.program['u_flashlight'] = -1 # determins if the flashlight is on. -1 = off, 1 = on.
+        self.program['u_renderMode'] = 1 # determins which rendering mode is being run. 1-4 are AA modes, 0 is the UV map.
+        self.program['u_resolution'] = self.window_size # passes program resolution to fragment shader.
         # self.program['u_texture1'] = 1
         # self.program['u_texture2'] = 2
         # self.program['u_texture3'] = 3
@@ -80,7 +76,7 @@ class App(mglw.WindowConfig):
         # self.texture7.use(location=7)
         self.quad.render(self.program)
 
-    def clamp(self, n, min, max): 
+    def clamp(self, n, min, max): # clamps number btween two values.
         if n < min: 
             return min
         elif n > max: 
@@ -88,18 +84,19 @@ class App(mglw.WindowConfig):
         else: 
             return n 
         
-    def calc_camdir(self, dx, dy):
-        self.yaw -= dx/150
-        self.pitch = self.clamp(self.pitch - dy/150, -math.pi, math.pi)
+    def calc_camdir(self, dx, dy): # calculates a normalized vector corresponding to the camera direction.
+        self.yaw -= dx/150 # yaw controls horizontal rotation
+        self.pitch = self.clamp(self.pitch - dy/150, -math.pi, math.pi) # pitch controls vertical direction.
+        # pitch is clamped between looking straight down and straight up to stop inverted camera.
 
-        normal = Vector3([math.sin(self.yaw), self.pitch, math.cos(self.yaw)])
+        normal = Vector3([math.sin(self.yaw), self.pitch, math.cos(self.yaw)]) # turn the pitch and yaw value into a normalized direction vector.
 
         self.cam_target = normal
 
-        self.program['u_camTarget'] = normal
+        self.program['u_camTarget'] = normal # passes direction vector to shader.
 
     def mouse_position_event(self, x, y, dx, dy):
-        self.calc_camdir( dx, dy)
+        self.calc_camdir( dx, dy) # calculates the number of pixels the mouse has moved from the center per frame.
         
     
     def mouse_scroll_event(self, x_offset, y_offset):
@@ -110,6 +107,7 @@ class App(mglw.WindowConfig):
 
     def key_event(self, key, action, modifiers):
         match key:
+            # movement keys
             case self.wnd.keys.W:
                 self.keys["W"] = action == self.wnd.keys.ACTION_PRESS
             case self.wnd.keys.A:
@@ -120,12 +118,15 @@ class App(mglw.WindowConfig):
                 self.keys["D"] = action == self.wnd.keys.ACTION_PRESS
             case self.wnd.keys.SPACE:
                 self.keys["SPACE"] = action == self.wnd.keys.ACTION_PRESS
+            
 
+            # flashlight key
             case self.wnd.keys.F:
                 if action == self.wnd.keys.ACTION_PRESS:
                     self.flash_light *= -1
                     self.program['u_flashlight'] = self.flash_light
 
+            # render mode keys
             case self.wnd.keys.NUMBER_0:
                 self.program['u_renderMode'] = 0
             case self.wnd.keys.NUMBER_1:
@@ -137,18 +138,18 @@ class App(mglw.WindowConfig):
             case self.wnd.keys.NUMBER_4:
                 self.program['u_renderMode'] = 4
 
-        self.keys["shift"] = self.wnd.modifiers.shift
-
-        self.keys["ctrl"] =self.wnd.modifiers.ctrl
+        # modifier keys need to be set differently as they output a constant boolean of if they are pressed or not.
+        self.keys["ctrl"] = self.wnd.modifiers.ctrl
         self.keys["alt"] = self.wnd.modifiers.alt      
 
     def key_press(self):
-        speed = 0.08
+        speed = 0.08 # default speed
         if self.keys.get("ctrl"):
-            speed = 0.3
+            speed = 0.3 # fast speed
         if self.keys.get("alt"):
-            speed = 0.005
+            speed = 0.005 # slow speed
             
+        # takes keypresses and then changes the camera position relative to the direction of the camera.
         if self.keys.get("W"):
             self.cam_pos += Vector3([speed*math.sin(self.yaw), 0.0, speed*math.cos(self.yaw)])
         if self.keys.get("A"):
@@ -161,7 +162,7 @@ class App(mglw.WindowConfig):
             self.cam_pos += Vector3([0.0, speed, 0.0])
         if self.keys.get("shift"):
             self.cam_pos += Vector3([0.0, -speed, 0.0])
-        self.program['u_camPos'] = self.cam_pos      
+        self.program['u_camPos'] = self.cam_pos # passes cam position to fragment shader.    
 
 
 if __name__ == '__main__':
