@@ -140,7 +140,8 @@ class App(mglw.WindowConfig):
 
         # modifier keys need to be set differently as they output a constant boolean of if they are pressed or not.
         self.keys["ctrl"] = self.wnd.modifiers.ctrl
-        self.keys["alt"] = self.wnd.modifiers.alt      
+        self.keys["alt"] = self.wnd.modifiers.alt
+        self.keys["shift"] = self.wnd.modifiers.shift 
 
     def key_press(self):
         speed = 0.08 # default speed
